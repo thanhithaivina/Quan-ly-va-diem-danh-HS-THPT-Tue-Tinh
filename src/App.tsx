@@ -37,8 +37,7 @@ import {
   getStoredConfigs,
   saveStoredConfigs,
   getStoredTemplates,
-  saveStoredTemplates,
-  resetAllToDefault
+  saveStoredTemplates
 } from './utils/storage';
 
 export default function App() {
@@ -119,15 +118,78 @@ export default function App() {
     saveStoredTemplates(templates);
   }, [templates]);
 
-  // Reset to sample data
-  const handleResetData = () => {
-    const res = resetAllToDefault();
-    setStudents(res.students);
-    setClasses(res.classes);
-    setAttendanceRecords(res.attendance);
-    setLeaves(res.leaves);
-    setNotifLogs(res.notifLogs);
-    alert('Đã khôi phục dữ liệu học sinh & điểm danh mẫu thành công!');
+  // Restore state from imported backup JSON object
+  const handleRestoreData = (backupObj: any): boolean => {
+    try {
+      const parseOrReturn = (val: any) => {
+        if (!val) return null;
+        if (typeof val === 'string') {
+          try {
+            return JSON.parse(val);
+          } catch {
+            return null;
+          }
+        }
+        return val;
+      };
+
+      const restoredStudents = parseOrReturn(backupObj.students);
+      const restoredClasses = parseOrReturn(backupObj.classes);
+      const restoredAttendance = parseOrReturn(backupObj.attendance);
+      const restoredLeaves = parseOrReturn(backupObj.leaves);
+      const restoredLogs = parseOrReturn(backupObj.logs || backupObj.notifLogs);
+      const restoredConfigs = parseOrReturn(backupObj.configs);
+      const restoredTemplates = parseOrReturn(backupObj.templates);
+      const restoredTimetables = parseOrReturn(backupObj.timetables);
+      const restoredTeacherAccount = parseOrReturn(backupObj.teacherAccount);
+
+      if (Array.isArray(restoredStudents)) {
+        setStudents(restoredStudents);
+        saveStoredStudents(restoredStudents);
+      }
+      if (Array.isArray(restoredClasses)) {
+        setClasses(restoredClasses);
+        saveStoredClasses(restoredClasses);
+      }
+      if (Array.isArray(restoredAttendance)) {
+        setAttendanceRecords(restoredAttendance);
+        saveStoredAttendance(restoredAttendance);
+      }
+      if (Array.isArray(restoredLeaves)) {
+        setLeaves(restoredLeaves);
+        saveStoredLeaves(restoredLeaves);
+      }
+      if (Array.isArray(restoredLogs)) {
+        setNotifLogs(restoredLogs);
+        saveStoredNotifLogs(restoredLogs);
+      }
+      if (Array.isArray(restoredConfigs)) {
+        setConfigs(restoredConfigs);
+        saveStoredConfigs(restoredConfigs);
+      }
+      if (Array.isArray(restoredTemplates)) {
+        setTemplates(restoredTemplates);
+        saveStoredTemplates(restoredTemplates);
+      }
+      if (restoredTimetables) {
+        localStorage.setItem('app_timetable_schedules_v1', JSON.stringify(restoredTimetables));
+      }
+      if (restoredTeacherAccount) {
+        setCurrentTeacher(restoredTeacherAccount);
+        localStorage.setItem('app_current_teacher_account', JSON.stringify(restoredTeacherAccount));
+      }
+      if (backupObj.subjectTeacherName) {
+        localStorage.setItem('app_subject_teacher_name', backupObj.subjectTeacherName);
+      }
+      if (backupObj.subjectTeacherSubject) {
+        localStorage.setItem('app_subject_teacher_subject', backupObj.subjectTeacherSubject);
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Lỗi khi phục hồi dữ liệu backup:', err);
+      return false;
+    }
   };
 
   // Student CRUD
@@ -259,7 +321,6 @@ export default function App() {
         onSelectDate={setSelectedDate}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onResetData={handleResetData}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
         pendingLeavesCount={pendingLeavesCount}
@@ -371,7 +432,7 @@ export default function App() {
           {activeTab === 'settings' && (
             <SettingsView
               classes={classes}
-              onResetData={handleResetData}
+              onRestoreData={handleRestoreData}
             />
           )}
         </main>

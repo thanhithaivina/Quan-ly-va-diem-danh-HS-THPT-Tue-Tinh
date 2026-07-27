@@ -1,5 +1,5 @@
 import React from 'react';
-import { School, Calendar, RefreshCw, UserCheck, Bell, Menu, PlusCircle, CheckCircle2, Mail, LogIn, User } from 'lucide-react';
+import { School, Calendar, UserCheck, Bell, Menu, PlusCircle, CheckCircle2, Mail, LogIn, User } from 'lucide-react';
 import { ClassInfo, TeacherAccount } from '../types';
 
 interface HeaderProps {
@@ -10,7 +10,6 @@ interface HeaderProps {
   onSelectDate: (date: string) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onResetData: () => void;
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
   pendingLeavesCount: number;
@@ -26,7 +25,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectDate,
   activeTab,
   setActiveTab,
-  onResetData,
   mobileMenuOpen,
   setMobileMenuOpen,
   pendingLeavesCount,
@@ -163,16 +161,6 @@ export const Header: React.FC<HeaderProps> = ({
                 {pendingLeavesCount}
               </span>
             )}
-          </button>
-
-          {/* Reset data */}
-          <button
-            id="btn-header-reset"
-            onClick={onResetData}
-            title="Khôi phục dữ liệu mẫu"
-            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-500 hover:text-amber-600 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
