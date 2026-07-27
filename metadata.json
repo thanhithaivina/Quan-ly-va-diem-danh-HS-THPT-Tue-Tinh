@@ -1,0 +1,6 @@
+{
+  "name": "Hệ thống quản lý và điểm danh học sinh Trường THPT Tuệ Tĩnh",
+  "description": "Ứng dụng chuyên nghiệp quản lý danh sách học sinh (sắp xếp A-Z), điểm danh theo tiết/ngày, quản lý đơn xin nghỉ, gửi thông báo Zalo/SMS tự động cho phụ huynh, báo cáo tổng hợp và phân tích học tập trực quan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
