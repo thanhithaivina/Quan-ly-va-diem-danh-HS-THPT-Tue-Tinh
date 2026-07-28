@@ -24,6 +24,8 @@ import {
 } from './types';
 
 import {
+  DEFAULT_TEACHER_ACCOUNT,
+  updateRegisteredAccount,
   getStoredStudents,
   saveStoredStudents,
   getStoredClasses,
@@ -41,30 +43,26 @@ import {
 } from './utils/storage';
 
 export default function App() {
-  const [students, setStudents] = useState<Student[]>(getStoredStudents);
-  const [classes, setClasses] = useState<ClassInfo[]>(getStoredClasses);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(getStoredAttendance);
-  const [leaves, setLeaves] = useState<AbsenceLeave[]>(getStoredLeaves);
-  const [notifLogs, setNotifLogs] = useState<NotificationLog[]>(getStoredNotifLogs);
-  const [configs, setConfigs] = useState<NotificationChannelConfig[]>(getStoredConfigs);
-  const [templates, setTemplates] = useState<NotificationTemplate[]>(getStoredTemplates);
-
-  // Teacher Gmail Login state
+  // Current Active Teacher Account
   const [currentTeacher, setCurrentTeacher] = useState<TeacherAccount | null>(() => {
     const saved = localStorage.getItem('app_current_teacher_account');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.email) return parsed;
+      } catch (e) { /* ignore */ }
     }
-    return {
-      email: 'nguyen.van.hoa@gmail.com',
-      name: 'Cô Nguyễn Thị Hoa',
-      school: 'Trường THPT Chuyên 2026',
-      role: 'Giáo viên Chủ Nhiệm 10A',
-      subject: 'Môn Toán Học',
-      assignedClasses: ['10A', '10B', '11A'],
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80',
-    };
+    return DEFAULT_TEACHER_ACCOUNT;
   });
+
+  // Load account-specific isolated workspace data
+  const [students, setStudents] = useState<Student[]>(() => getStoredStudents(currentTeacher?.email));
+  const [classes, setClasses] = useState<ClassInfo[]>(() => getStoredClasses(currentTeacher?.email));
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => getStoredAttendance(currentTeacher?.email));
+  const [leaves, setLeaves] = useState<AbsenceLeave[]>(() => getStoredLeaves(currentTeacher?.email));
+  const [notifLogs, setNotifLogs] = useState<NotificationLog[]>(() => getStoredNotifLogs(currentTeacher?.email));
+  const [configs, setConfigs] = useState<NotificationChannelConfig[]>(() => getStoredConfigs(currentTeacher?.email));
+  const [templates, setTemplates] = useState<NotificationTemplate[]>(() => getStoredTemplates(currentTeacher?.email));
 
   const [isGmailModalOpen, setIsGmailModalOpen] = useState(false);
 
@@ -82,41 +80,83 @@ export default function App() {
     defaultReason?: string;
   } | null>(null);
 
-  // Save current teacher account
+  // Reload data whenever active teacher changes
+  const loadTeacherWorkspace = (teacherEmail?: string) => {
+    setStudents(getStoredStudents(teacherEmail));
+    setClasses(getStoredClasses(teacherEmail));
+    setAttendanceRecords(getStoredAttendance(teacherEmail));
+    setLeaves(getStoredLeaves(teacherEmail));
+    setNotifLogs(getStoredNotifLogs(teacherEmail));
+    setConfigs(getStoredConfigs(teacherEmail));
+    setTemplates(getStoredTemplates(teacherEmail));
+  };
+
+  const handleLoginTeacher = (acc: TeacherAccount) => {
+    setCurrentTeacher(acc);
+    localStorage.setItem('app_current_teacher_account', JSON.stringify(acc));
+    loadTeacherWorkspace(acc.email);
+  };
+
+  const handleLogoutTeacher = () => {
+    setCurrentTeacher(null);
+    localStorage.removeItem('app_current_teacher_account');
+    setIsGmailModalOpen(true);
+  };
+
+  const handleUpdateTeacherAccount = (updatedAcc: TeacherAccount) => {
+    const saved = updateRegisteredAccount(updatedAcc);
+    setCurrentTeacher(saved);
+  };
+
+  // Save current teacher account to local storage
   useEffect(() => {
     if (currentTeacher) {
       localStorage.setItem('app_current_teacher_account', JSON.stringify(currentTeacher));
     }
   }, [currentTeacher]);
 
-  // Persist state updates to LocalStorage
+  // Persist state updates to LocalStorage scoped by teacher email
   useEffect(() => {
-    saveStoredStudents(students);
-  }, [students]);
+    if (currentTeacher?.email) {
+      saveStoredStudents(students, currentTeacher.email);
+    }
+  }, [students, currentTeacher?.email]);
 
   useEffect(() => {
-    saveStoredClasses(classes);
-  }, [classes]);
+    if (currentTeacher?.email) {
+      saveStoredClasses(classes, currentTeacher.email);
+    }
+  }, [classes, currentTeacher?.email]);
 
   useEffect(() => {
-    saveStoredAttendance(attendanceRecords);
-  }, [attendanceRecords]);
+    if (currentTeacher?.email) {
+      saveStoredAttendance(attendanceRecords, currentTeacher.email);
+    }
+  }, [attendanceRecords, currentTeacher?.email]);
 
   useEffect(() => {
-    saveStoredLeaves(leaves);
-  }, [leaves]);
+    if (currentTeacher?.email) {
+      saveStoredLeaves(leaves, currentTeacher.email);
+    }
+  }, [leaves, currentTeacher?.email]);
 
   useEffect(() => {
-    saveStoredNotifLogs(notifLogs);
-  }, [notifLogs]);
+    if (currentTeacher?.email) {
+      saveStoredNotifLogs(notifLogs, currentTeacher.email);
+    }
+  }, [notifLogs, currentTeacher?.email]);
 
   useEffect(() => {
-    saveStoredConfigs(configs);
-  }, [configs]);
+    if (currentTeacher?.email) {
+      saveStoredConfigs(configs, currentTeacher.email);
+    }
+  }, [configs, currentTeacher?.email]);
 
   useEffect(() => {
-    saveStoredTemplates(templates);
-  }, [templates]);
+    if (currentTeacher?.email) {
+      saveStoredTemplates(templates, currentTeacher.email);
+    }
+  }, [templates, currentTeacher?.email]);
 
   // Restore state from imported backup JSON object
   const handleRestoreData = (backupObj: any): boolean => {
@@ -133,6 +173,8 @@ export default function App() {
         return val;
       };
 
+      const emailToUse = currentTeacher?.email;
+
       const restoredStudents = parseOrReturn(backupObj.students);
       const restoredClasses = parseOrReturn(backupObj.classes);
       const restoredAttendance = parseOrReturn(backupObj.attendance);
@@ -140,49 +182,38 @@ export default function App() {
       const restoredLogs = parseOrReturn(backupObj.logs || backupObj.notifLogs);
       const restoredConfigs = parseOrReturn(backupObj.configs);
       const restoredTemplates = parseOrReturn(backupObj.templates);
-      const restoredTimetables = parseOrReturn(backupObj.timetables);
       const restoredTeacherAccount = parseOrReturn(backupObj.teacherAccount);
 
       if (Array.isArray(restoredStudents)) {
         setStudents(restoredStudents);
-        saveStoredStudents(restoredStudents);
+        saveStoredStudents(restoredStudents, emailToUse);
       }
       if (Array.isArray(restoredClasses)) {
         setClasses(restoredClasses);
-        saveStoredClasses(restoredClasses);
+        saveStoredClasses(restoredClasses, emailToUse);
       }
       if (Array.isArray(restoredAttendance)) {
         setAttendanceRecords(restoredAttendance);
-        saveStoredAttendance(restoredAttendance);
+        saveStoredAttendance(restoredAttendance, emailToUse);
       }
       if (Array.isArray(restoredLeaves)) {
         setLeaves(restoredLeaves);
-        saveStoredLeaves(restoredLeaves);
+        saveStoredLeaves(restoredLeaves, emailToUse);
       }
       if (Array.isArray(restoredLogs)) {
         setNotifLogs(restoredLogs);
-        saveStoredNotifLogs(restoredLogs);
+        saveStoredNotifLogs(restoredLogs, emailToUse);
       }
       if (Array.isArray(restoredConfigs)) {
         setConfigs(restoredConfigs);
-        saveStoredConfigs(restoredConfigs);
+        saveStoredConfigs(restoredConfigs, emailToUse);
       }
       if (Array.isArray(restoredTemplates)) {
         setTemplates(restoredTemplates);
-        saveStoredTemplates(restoredTemplates);
-      }
-      if (restoredTimetables) {
-        localStorage.setItem('app_timetable_schedules_v1', JSON.stringify(restoredTimetables));
+        saveStoredTemplates(restoredTemplates, emailToUse);
       }
       if (restoredTeacherAccount) {
-        setCurrentTeacher(restoredTeacherAccount);
-        localStorage.setItem('app_current_teacher_account', JSON.stringify(restoredTeacherAccount));
-      }
-      if (backupObj.subjectTeacherName) {
-        localStorage.setItem('app_subject_teacher_name', backupObj.subjectTeacherName);
-      }
-      if (backupObj.subjectTeacherSubject) {
-        localStorage.setItem('app_subject_teacher_subject', backupObj.subjectTeacherSubject);
+        handleUpdateTeacherAccount(restoredTeacherAccount);
       }
 
       return true;
@@ -210,79 +241,37 @@ export default function App() {
     setStudents((prev) => prev.filter((s) => !idSet.has(s.id)));
   };
 
-  const handleImportStudents = (imported: Student[], overwriteClass?: string) => {
-    setStudents((prev) => {
-      if (overwriteClass) {
-        const remaining = prev.filter((s) => s.className !== overwriteClass);
-        return [...imported, ...remaining];
-      }
-      return [...imported, ...prev];
-    });
+  const handleImportStudents = (newStudents: Student[]) => {
+    setStudents((prev) => [...newStudents, ...prev]);
   };
 
-  // Save Attendance Record updates
-  const handleSaveAttendance = (updatedRecords: AttendanceRecord[]) => {
+  // Attendance Save handler
+  const handleSaveAttendance = (newRecords: AttendanceRecord[]) => {
     setAttendanceRecords((prev) => {
-      const map = new Map(prev.map((r) => [r.id, r]));
-      updatedRecords.forEach((rec) => {
-        map.set(rec.id, rec);
-      });
+      const map = new Map<string, AttendanceRecord>();
+      prev.forEach((r) => map.set(`${r.studentId}_${r.date}`, r));
+      newRecords.forEach((r) => map.set(`${r.studentId}_${r.date}`, r));
       return Array.from(map.values());
     });
   };
 
-  // Leave Approvals
+  // Absence Leave Approval
   const handleApproveLeave = (leaveId: string) => {
-    const leave = leaves.find((l) => l.id === leaveId);
-    if (!leave) return;
-
-    // 1. Update leave status
     setLeaves((prev) =>
       prev.map((l) =>
-        l.id === leaveId ? { ...l, status: 'Đã duyệt', approvedBy: 'Cô Nguyễn Thị Hoa' } : l
+        l.id === leaveId
+          ? { ...l, status: 'Đã duyệt', approvedBy: currentTeacher?.name || 'Giáo viên' }
+          : l
       )
     );
-
-    // 2. Automatically sync to Attendance Records for those dates as Vang_P
-    const student = students.find((s) => s.id === leave.studentId);
-    if (student) {
-      const newAttRecord: AttendanceRecord = {
-        id: `att_${student.id}_${leave.fromDate}`,
-        studentId: student.id,
-        date: leave.fromDate,
-        className: student.className,
-        periods: { 1: 'Vang_P', 2: 'Vang_P', 3: 'Vang_P', 4: 'Vang_P', 5: 'Vang_P' },
-        overallStatus: 'Vang_P',
-        note: `Nghỉ có phép: ${leave.reason}`,
-        minutesLate: 0,
-        updatedAt: new Date().toISOString(),
-        notifiedParent: true,
-        notifiedTime: new Date().toLocaleTimeString('vi-VN'),
-      };
-
-      handleSaveAttendance([newAttRecord]);
-
-      // 3. Log notification
-      const logItem: NotificationLog = {
-        id: `log_${Date.now()}`,
-        studentId: student.id,
-        studentName: student.fullName,
-        className: student.className,
-        parentPhone: student.parentPhone,
-        channel: 'Zalo',
-        type: 'Đơn xin nghỉ',
-        content: `Nhà trường đã DUYỆT đơn xin nghỉ phép của em ${student.fullName} ngày ${leave.fromDate}. Lý do: ${leave.reason}.`,
-        sentAt: new Date().toLocaleString('vi-VN'),
-        status: 'Đã gửi',
-      };
-      setNotifLogs((prev) => [logItem, ...prev]);
-    }
   };
 
   const handleRejectLeave = (leaveId: string, reason?: string) => {
     setLeaves((prev) =>
       prev.map((l) =>
-        l.id === leaveId ? { ...l, status: 'Từ chối', rejectionReason: reason || 'Chưa duyệt' } : l
+        l.id === leaveId
+          ? { ...l, status: 'Từ chối', rejectionReason: reason, approvedBy: currentTeacher?.name || 'Giáo viên' }
+          : l
       )
     );
   };
@@ -291,10 +280,14 @@ export default function App() {
     setLeaves((prev) => [newLeave, ...prev]);
   };
 
-  // Send Notification Handler
-  const handleConfirmSendNotification = (student: Student, channel: 'Zalo' | 'SMS', message: string) => {
+  // Notification Handler
+  const handleConfirmSendNotification = (
+    student: Student,
+    channel: 'Zalo' | 'SMS' | 'Zalo ZNS',
+    message: string
+  ) => {
     const newLog: NotificationLog = {
-      id: `log_${Date.now()}`,
+      id: `NOTIF-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       studentId: student.id,
       studentName: student.fullName,
       className: student.className,
@@ -341,6 +334,7 @@ export default function App() {
           onSelectClass={setSelectedClass}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
+          currentTeacher={currentTeacher}
         />
 
         {/* Main Content Area */}
@@ -432,6 +426,8 @@ export default function App() {
           {activeTab === 'settings' && (
             <SettingsView
               classes={classes}
+              currentTeacher={currentTeacher}
+              onUpdateAccount={handleUpdateTeacherAccount}
               onRestoreData={handleRestoreData}
             />
           )}
@@ -461,15 +457,13 @@ export default function App() {
         />
       )}
 
-      {/* Gmail Auth Modal */}
+      {/* Gmail / Account Auth Modal */}
       <GmailAuthModal
         isOpen={isGmailModalOpen}
         onClose={() => setIsGmailModalOpen(false)}
         currentAccount={currentTeacher}
-        onLogin={(acc) => {
-          setCurrentTeacher(acc);
-          alert(`Đã đăng nhập thành công với tài khoản Gmail: ${acc.email} (${acc.name})!`);
-        }}
+        onLogin={handleLoginTeacher}
+        onLogout={handleLogoutTeacher}
       />
     </div>
   );

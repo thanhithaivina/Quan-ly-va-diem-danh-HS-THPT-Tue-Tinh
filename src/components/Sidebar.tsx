@@ -13,7 +13,7 @@ import {
   School,
   BookOpen
 } from 'lucide-react';
-import { ClassInfo } from '../types';
+import { ClassInfo, TeacherAccount } from '../types';
 
 interface SidebarProps {
   activeTab: string;
@@ -26,6 +26,7 @@ interface SidebarProps {
   onSelectClass: (cName: string) => void;
   selectedDate: string;
   onSelectDate: (d: string) => void;
+  currentTeacher?: TeacherAccount | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -38,7 +39,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedClass,
   onSelectClass,
   selectedDate,
-  onSelectDate
+  onSelectDate,
+  currentTeacher,
 }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Tổng quan Dashboard', icon: LayoutDashboard },
@@ -177,17 +179,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </nav>
 
           {/* Teacher Profile Card Footer */}
-          <div className="p-4 bg-slate-950 border-t border-slate-800 mt-4 mx-3 rounded-xl">
+          <div className="p-3.5 bg-slate-950 border-t border-slate-800 mt-4 mx-3 rounded-xl">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shadow-sm shrink-0">
-                BM
-              </div>
+              {currentTeacher?.avatar ? (
+                <img
+                  src={currentTeacher.avatar}
+                  alt={currentTeacher.name}
+                  className="w-8 h-8 rounded-full border border-blue-500 shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shadow-xs shrink-0">
+                  GV
+                </div>
+              )}
               <div className="text-xs truncate">
                 <p className="font-bold text-white truncate">
-                  {localStorage.getItem('app_subject_teacher_name') || 'Thầy Nguyễn Văn Thắng'}
+                  {currentTeacher?.name || 'Cô Nguyễn Thị Hoa'}
                 </p>
                 <p className="text-[11px] text-slate-400 truncate">
-                  {localStorage.getItem('app_subject_teacher_subject') || 'Giáo viên bộ môn'} • Lớp {selectedClass}
+                  {currentTeacher?.subject || 'Môn Toán'} • {currentTeacher?.schoolYear || '2025-2026'}
                 </p>
               </div>
             </div>

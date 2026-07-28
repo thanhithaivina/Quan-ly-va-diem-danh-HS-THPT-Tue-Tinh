@@ -6,10 +6,13 @@ export type StudentRole = 'Lớp trưởng' | 'Lớp phó' | 'Cán sự môn' | 
 
 export interface TeacherAccount {
   email: string;
+  password?: string;
   name: string;
+  phone?: string;
+  subject?: string;
+  schoolYear?: string;
   school: string;
   role: string;
-  subject?: string;
   assignedClasses: string[];
   avatar?: string;
 }
